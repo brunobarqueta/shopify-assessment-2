@@ -160,15 +160,17 @@
                 "price_tVjtKg"
               ]
             },
-            "divider_VJhene": {
-              "type": "_divider",
-              "name": "t:names.divider",
+            "product_addon_bhCwfk": {
+              "type": "product-addon",
+              "name": "Product Add-on",
               "settings": {
-                "thickness": 1,
-                "corner_radius": "square",
-                "width_percent": 100,
+                "show_title": true,
+                "title": "Add-ons",
+                "addon_product": "dumbells",
                 "padding-block-start": 0,
-                "padding-block-end": 0
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
               },
               "blocks": {}
             },
@@ -251,7 +253,7 @@
           },
           "block_order": [
             "group_icgrde",
-            "divider_VJhene",
+            "product_addon_bhCwfk",
             "variant_picker_R3rGDr",
             "buy_buttons_eYQEYi",
             "text_aEtTtq"
