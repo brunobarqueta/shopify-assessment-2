@@ -2107,7 +2107,6 @@ product-price.text-block:is(.h1, .h2, .h3, .h4, .h5, .h6) > *:not(.tax-note) {
 }
 
 .compare-at-price {
-  opacity: 0.4;
   text-decoration-line: line-through;
   text-decoration-thickness: 1.5px;
 }
@@ -3524,36 +3523,28 @@ slideshow-component[autoplay] slideshow-controls {
   overflow: hidden;
 
   button {
-    --size: 0.5rem;
-
     display: flex;
     align-items: center;
     justify-content: center;
-    width: calc(var(--size) * 2);
-    height: calc(var(--size) * 2);
-    margin: calc(var(--size) / -2);
+    width: 76px; /* Fixed 76px width */
+    height: 11px; /* Fixed 11px height */
+    margin: 0; /* Remove negative margin */
     font-size: 0;
-    border-radius: calc(var(--size));
+    border-radius: 16px; /* Consistent 16px border radius */
+    background-color: var(--color); /* Move background to button itself */
 
     &::after {
-      content: '';
-      display: block;
-      background-color: var(--color);
-      height: var(--size);
-      width: var(--size);
+      display: none; /* Remove the interfering ::after element */
+    }
 
-      /* This is at --size / 2 to remove a visual regression on subpixel rendering displays */
-      border-radius: calc(var(--size) / 2);
-
-      @supports not (view-timeline-axis: inline) {
-        &[aria-selected='true'] {
-          --color: var(--color-active);
-        }
+    @supports not (view-timeline-axis: inline) {
+      &[aria-selected='true'] {
+        --color: var(--color-active);
       }
+    }
 
-      &:hover {
-        --color: var(--color-hover);
-      }
+    &:hover {
+      --color: var(--color-hover);
     }
 
     &[aria-selected='true'] {

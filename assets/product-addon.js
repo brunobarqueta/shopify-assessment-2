@@ -8,6 +8,7 @@ class ProductAddon {
     this.pendingAddons = null;
     this.isProcessingAddons = false; // Flag to prevent loops
     this.processedEventIds = new Set(); // Track processed events
+    this.lastCartCountUpdate = 0; // Rate limiting for cart count updates
     this.init();
   }
 
@@ -18,15 +19,48 @@ class ProductAddon {
   bindEvents() {
     // Listen for the theme's CartAddEvent (which uses 'cart:update' event name)
     document.addEventListener('cart:update', (event) => {
-      this.handleCartAdd(event);
+      // Only handle if this is specifically an ADD event from a product form
+      if (this.isAddToCartEvent(event)) {
+        this.handleCartAdd(event);
+      }
     });
 
-    // Also listen for form submissions as fallback
+    // Listen for form submissions to mark when we're expecting an add-to-cart
     document.addEventListener('submit', (event) => {
       if (event.target && event.target.matches && event.target.matches('form[action*="/cart/add"]')) {
         this.handleFormSubmit(event);
       }
     });
+  }
+
+  isAddToCartEvent(event) {
+    // Check if this is an ADD event (not update, remove, etc.)
+    if (!event.detail || !event.detail.data) {
+      return false;
+    }
+
+    const data = event.detail.data;
+    
+    // Must be from product-form-component source (not quantity updates, removes, etc.)
+    if (data.source !== 'product-form-component') {
+      console.log('Not a product form add event, source:', data.source);
+      return false;
+    }
+
+    // Must not be an error
+    if (data.didError) {
+      console.log('Add to cart had errors, skipping');
+      return false;
+    }
+
+    // Must have a product ID (indicating a product was added)
+    if (!data.productId) {
+      console.log('No product ID in event, not a product add');
+      return false;
+    }
+
+    console.log('Valid add to cart event detected');
+    return true;
   }
 
   handleFormSubmit(event) {
@@ -42,7 +76,7 @@ class ProductAddon {
   }
 
   async handleCartAdd(event) {
-    console.log('Cart add event detected:', event);
+    console.log('Processing add to cart event for addon addition:', event);
     
     // Prevent loops - ignore events we generated ourselves
     if (event.detail && event.detail.data && event.detail.data.source === 'product-addon') {
@@ -56,14 +90,7 @@ class ProductAddon {
       return;
     }
     
-    // Check if this is actually an add operation (not an error)
-    if (event.detail && event.detail.data && event.detail.data.didError) {
-      console.log('Cart add had errors, skipping addon addition');
-      return;
-    }
-    
     // Create a unique event ID to prevent processing the same event twice
-    const eventId = `${Date.now()}-${Math.random()}`;
     if (event.detail) {
       if (event.detail.eventId && this.processedEventIds.has(event.detail.eventId)) {
         console.log('Event already processed, skipping');
@@ -78,6 +105,7 @@ class ProductAddon {
     let addonsToAdd = this.pendingAddons || this.getCheckedAddons();
     
     if (addonsToAdd.length === 0) {
+      console.log('No addons selected, skipping');
       return; // No add-ons selected
     }
 
@@ -88,7 +116,7 @@ class ProductAddon {
       console.log('Adding addon products:', addonsToAdd);
       
       // Add a small delay to ensure the main product was added successfully
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       const addonItems = addonsToAdd.map(addon => ({
         id: addon.variantId,
@@ -163,54 +191,29 @@ class ProductAddon {
     console.log('Triggering cart refresh...');
     
     try {
-      // First, get the updated cart data and sections
-      const cartItemsComponents = document.querySelectorAll('cart-items-component');
-      let cartSectionIds = [];
-      
-      cartItemsComponents.forEach((component) => {
-        if (component.dataset && component.dataset.sectionId) {
-          cartSectionIds.push(component.dataset.sectionId);
-        }
-      });
-      
-      // If we have cart sections, fetch them
-      let sections = {};
-      if (cartSectionIds.length > 0) {
-        const sectionIds = cartSectionIds.join(',');
-        const response = await fetch(`${window.location.pathname}?sections=${sectionIds}`);
-        const sectionsData = await response.json();
-        sections = sectionsData;
-        console.log('Fetched updated sections:', sections);
-      }
-      
-      // Dispatch the cart update event with section data
+      // Simple approach: just trigger the cart update event without fetching sections
+      // The cart components will handle their own section updates
       const cartUpdateEvent = new CustomEvent('cart:update', { 
         bubbles: true,
         detail: {
           source: 'product-addon',
           data: {
-            source: 'product-addon',
-            sections: sections
+            source: 'product-addon'
           }
         }
       });
       
-      // Dispatch from different targets to ensure all components receive it
+      // Dispatch the event
       document.dispatchEvent(cartUpdateEvent);
       
-      // Also trigger on cart components directly
-      cartItemsComponents.forEach((component) => {
-        component.dispatchEvent(cartUpdateEvent);
-      });
-      
-      // Update cart count as well
+      // Update cart count
       await this.updateCartCount();
       
       console.log('Cart refresh completed');
       
     } catch (error) {
       console.error('Error during cart refresh:', error);
-      // Fallback to simple events if section fetching fails
+      // Fallback to simple events if anything fails
       this.triggerSimpleCartUpdate();
     }
   }
@@ -236,9 +239,23 @@ class ProductAddon {
   }
 
   async updateCartCount() {
+    // Rate limiting: only update cart count once per second
+    const now = Date.now();
+    if (now - this.lastCartCountUpdate < 1000) {
+      console.log('Cart count update rate limited, skipping');
+      return;
+    }
+    
+    this.lastCartCountUpdate = now;
+    
     try {
       // Fetch current cart to get updated count
       const response = await fetch('/cart.js');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const cart = await response.json();
       
       // Update cart count in header
@@ -255,6 +272,8 @@ class ProductAddon {
           cart: cart
         }
       }));
+      
+      console.log('Cart count updated:', cart.item_count);
       
     } catch (error) {
       console.error('Error updating cart count:', error);

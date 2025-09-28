@@ -144,7 +144,7 @@
     .product-information__grid:not(:has(.product-information__media:empty)) {
       /* Media on the left side */
       &.product-information--media-left {
-        grid-template-columns: 1fr min(50vw, var(--sidebar-width));
+        grid-template-columns: 3fr 2fr;
 
         .product-information__media {
           padding-right: calc(var(--gap, 0) / 2);
@@ -161,7 +161,7 @@
 
       /* Media on the right side */
       &.product-information--media-right {
-        grid-template-columns: min(50vw, var(--sidebar-width)) 1fr;
+        grid-template-columns: 2fr 3fr;
 
         .product-information__media {
           padding-left: calc(var(--gap, 0) / 2);
@@ -258,20 +258,20 @@
     }
   }
 
-  /* Wider sidebar for large screens */
+  /* Maintain 60/40 split for large screens */
   @media screen and (min-width: 1200px) {
     .product-information__grid:not(
         .product-information__grid--half,
         :has(.product-information__media:empty)
       ).product-information--media-left {
-      grid-template-columns: 2fr 1fr;
+      grid-template-columns: 3fr 2fr;
     }
 
     .product-information__grid:not(
         .product-information__grid--half,
         :has(.product-information__media:empty)
       ).product-information--media-right {
-      grid-template-columns: 1fr 2fr;
+      grid-template-columns: 2fr 3fr;
     }
   }
 
